@@ -77,7 +77,7 @@ export const ExperimentPanel: React.FC = () => {
   };
 
   return (
-    <div className="w-80 bg-slate-900/95 backdrop-blur-sm border-l border-slate-700 h-full flex flex-col">
+    <div className="w-full bg-slate-900/95 backdrop-blur-sm h-full flex flex-col">
       <div className="p-4 border-b border-slate-700">
         <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
           <FileText className="w-5 h-5 text-purple-400" />

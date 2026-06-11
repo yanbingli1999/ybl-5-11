@@ -8,7 +8,11 @@ import type {
   TemperatureSnapshot,
   ExperimentResult,
   SimulationMode,
+  StabilityDiagnosis,
+  StabilityState,
+  ParamName,
 } from '@shared/types';
+import type { FixSuggestion } from '../engine/StabilityDiagnostic';
 
 interface SimulationState {
   mode: SimulationMode;
@@ -37,6 +41,8 @@ interface SimulationState {
   
   currentExperimentId: string | null;
   hoveredCell: { x: number; y: number } | null;
+  
+  stability: StabilityState;
   
   setMode: (mode: SimulationMode) => void;
   setCurrentStep: (step: number) => void;
@@ -68,6 +74,12 @@ interface SimulationState {
   setFavorites: (favorites: ExperimentResult[]) => void;
   setCurrentExperimentId: (id: string | null) => void;
   setHoveredCell: (cell: { x: number; y: number } | null) => void;
+  
+  setLatestDiagnosis: (diagnosis: StabilityDiagnosis) => void;
+  addDiagnosisToHistory: (diagnosis: StabilityDiagnosis) => void;
+  clearDiagnosisHistory: () => void;
+  setAutoFixEnabled: (enabled: boolean) => void;
+  applyFixSuggestions: (suggestions: FixSuggestion[]) => void;
   
   reset: () => void;
 }
@@ -121,6 +133,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   currentExperimentId: null,
   hoveredCell: null,
+  
+  stability: {
+    latestDiagnosis: null,
+    diagnosisHistory: [],
+    autoFixEnabled: false,
+  },
   
   setMode: (mode) => set({ mode }),
   setCurrentStep: (step) => set({ currentStep: step }),
@@ -181,6 +199,79 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setFavorites: (favorites) => set({ favorites }),
   setCurrentExperimentId: (id) => set({ currentExperimentId: id }),
   setHoveredCell: (cell) => set({ hoveredCell: cell }),
+  
+  setLatestDiagnosis: (diagnosis) =>
+    set((state) => ({
+      stability: {
+        ...state.stability,
+        latestDiagnosis: diagnosis,
+      },
+    })),
+  
+  addDiagnosisToHistory: (diagnosis) =>
+    set((state) => ({
+      stability: {
+        ...state.stability,
+        diagnosisHistory: [...state.stability.diagnosisHistory.slice(-49), diagnosis],
+      },
+    })),
+  
+  clearDiagnosisHistory: () =>
+    set((state) => ({
+      stability: {
+        ...state.stability,
+        diagnosisHistory: [],
+      },
+    })),
+  
+  setAutoFixEnabled: (enabled) =>
+    set((state) => ({
+      stability: {
+        ...state.stability,
+        autoFixEnabled: enabled,
+      },
+    })),
+  
+  applyFixSuggestions: (suggestions) => {
+    const state = get();
+    const updates: Partial<SimulationState> = {};
+    
+    for (const suggestion of suggestions) {
+      switch (suggestion.param) {
+        case 'timeStep':
+          updates.timeStep = suggestion.recommendedValue;
+          break;
+        case 'gridSize':
+          const newSize = Math.floor(suggestion.recommendedValue);
+          updates.grid = {
+            ...state.grid,
+            width: Math.min(state.grid.width, newSize),
+            height: Math.min(state.grid.height, newSize),
+          };
+          break;
+        case 'diffusionCoefficient':
+          updates.diffusionCoefficient = suggestion.recommendedValue;
+          break;
+      }
+    }
+    
+    if (updates.grid) {
+      updates.currentTemperature = createEmptyTemperature(updates.grid);
+      updates.temperatureHistory = [];
+      updates.currentStep = 0;
+    }
+    
+    set((state) => ({
+      ...state,
+      ...updates,
+      stability: {
+        ...state.stability,
+        latestDiagnosis: state.stability.latestDiagnosis
+          ? { ...state.stability.latestDiagnosis, isAutoFixed: true }
+          : null,
+      },
+    }));
+  },
   
   reset: () =>
     set((state) => ({

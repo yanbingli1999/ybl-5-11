@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ConfigPanel from '@/components/ConfigPanel';
 import HeatCanvas from '@/components/HeatCanvas';
 import ControlBar from '@/components/ControlBar';
 import Timeline from '@/components/Timeline';
 import ExperimentPanel from '@/components/ExperimentPanel';
+import StabilityDiagnosticPanel from '@/components/StabilityDiagnosticPanel';
+import DiagnosisHistoryModal from '@/components/DiagnosisHistoryModal';
 import useSimulationStore from '@/store/useSimulationStore';
+import useStabilityDiagnostic from '@/hooks/useStabilityDiagnostic';
 import api from '@/services/api';
-import { Flame } from 'lucide-react';
+import { Flame, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
+import type { StabilityDiagnosis } from '@shared/types';
 
 export default function Home() {
   const {
@@ -15,7 +19,13 @@ export default function Home() {
     setFavorites,
     setSnapshots,
     currentExperimentId,
+    stability,
   } = useSimulationStore();
+
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedHistoryDiagnosis, setSelectedHistoryDiagnosis] = useState<StabilityDiagnosis | null>(null);
+
+  useStabilityDiagnostic();
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -51,6 +61,43 @@ export default function Home() {
     }
   }, [currentExperimentId, setSnapshots]);
 
+  const latestDiagnosis = stability.latestDiagnosis;
+  const riskLevel = latestDiagnosis?.riskLevel || 'safe';
+
+  const riskIndicatorConfig = {
+    safe: {
+      icon: <ShieldCheck className="w-4 h-4" />,
+      label: '安全',
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-900/30 border-emerald-500/30',
+      pulse: 'bg-emerald-500',
+    },
+    warning: {
+      icon: <ShieldAlert className="w-4 h-4" />,
+      label: '警告',
+      color: 'text-amber-400',
+      bg: 'bg-amber-900/30 border-amber-500/30',
+      pulse: 'bg-amber-500',
+    },
+    danger: {
+      icon: <ShieldX className="w-4 h-4" />,
+      label: '危险',
+      color: 'text-red-400',
+      bg: 'bg-red-900/30 border-red-500/30',
+      pulse: 'bg-red-500',
+    },
+  };
+
+  const riskConfig = riskIndicatorConfig[riskLevel];
+
+  const handleShowHistory = () => {
+    setShowHistoryModal(true);
+  };
+
+  const handleSelectHistoryDiagnosis = (diagnosis: StabilityDiagnosis) => {
+    setSelectedHistoryDiagnosis(diagnosis);
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 overflow-hidden">
       <header className="h-14 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 px-6 flex items-center justify-between shrink-0">
@@ -63,22 +110,50 @@ export default function Home() {
             <p className="text-xs text-slate-400">Heat Diffusion Simulator</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-slate-400">
-          <span className="px-2 py-1 bg-slate-800 rounded-md">v1.0.0</span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleShowHistory}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all hover:brightness-110 ${riskConfig.bg} ${riskConfig.color}`}
+          >
+            <div className="relative">
+              {riskConfig.icon}
+              {riskLevel !== 'safe' && (
+                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${riskConfig.pulse} rounded-full animate-ping`} />
+              )}
+            </div>
+            <span>稳定性: {riskConfig.label}</span>
+            {latestDiagnosis && latestDiagnosis.issues.length > 0 && (
+              <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                {latestDiagnosis.issues.length}
+              </span>
+            )}
+          </button>
+          <span className="text-xs text-slate-400 px-2 py-1 bg-slate-800 rounded-md">v1.1.0</span>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
         <ConfigPanel />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <HeatCanvas />
           <Timeline />
           <ControlBar />
         </div>
 
-        <ExperimentPanel />
+        <div className="flex h-full shrink-0">
+          <div className="w-72 border-l border-slate-700 h-full overflow-hidden">
+            <ExperimentPanel />
+          </div>
+          <StabilityDiagnosticPanel onShowHistory={handleShowHistory} />
+        </div>
       </div>
+
+      <DiagnosisHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        onSelectDiagnosis={handleSelectHistoryDiagnosis}
+      />
     </div>
   );
 }

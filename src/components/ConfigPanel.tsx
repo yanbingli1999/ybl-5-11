@@ -9,6 +9,7 @@ export const ConfigPanel: React.FC = () => {
     materialId,
     materials,
     diffusionCoefficient,
+    timeStep,
     totalSteps,
     playbackSpeed,
     minTemp,
@@ -19,6 +20,7 @@ export const ConfigPanel: React.FC = () => {
     setGrid,
     setBoundaryConditions,
     setMaterialId,
+    setTimeStep,
     setTotalSteps,
     setPlaybackSpeed,
     setTempRange,
@@ -162,6 +164,28 @@ export const ConfigPanel: React.FC = () => {
             模拟控制
           </h3>
           <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>时间步长 Δt</span>
+                <span className="font-mono">
+                  {timeStep >= 0.01 ? timeStep.toFixed(3) : timeStep.toExponential(2)} s
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.001"
+                max="10000"
+                step="0.001"
+                value={timeStep}
+                onChange={(e) => setTimeStep(Number(e.target.value))}
+                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>0.001s</span>
+                <span>100s</span>
+                <span>10000s</span>
+              </div>
+            </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-slate-400">
                 <span>总迭代步数</span>

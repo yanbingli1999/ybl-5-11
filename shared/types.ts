@@ -56,3 +56,43 @@ export interface ExperimentResult {
 }
 
 export type SimulationMode = 'idle' | 'running' | 'paused' | 'finished';
+
+export type StabilityRiskLevel = 'safe' | 'warning' | 'danger';
+
+export interface StabilityIssue {
+  type: 'stability' | 'accuracy' | 'boundary' | 'performance';
+  severity: 'low' | 'medium' | 'high';
+  reason: string;
+  suggestion: string;
+  affectedParam: string;
+  currentValue: number;
+  recommendedValue: number;
+}
+
+export interface StabilityDiagnosis {
+  id: string;
+  timestamp: number;
+  riskLevel: StabilityRiskLevel;
+  fourierNumber: number;
+  maxStableFourier: number;
+  issues: StabilityIssue[];
+  params: {
+    diffusionCoefficient: number;
+    timeStep: number;
+    gridSpacing: number;
+    gridWidth: number;
+    gridHeight: number;
+    boundaryTempDiff: number;
+    maxBoundaryTemp: number;
+    minBoundaryTemp: number;
+  };
+  isAutoFixed?: boolean;
+}
+
+export interface StabilityState {
+  latestDiagnosis: StabilityDiagnosis | null;
+  diagnosisHistory: StabilityDiagnosis[];
+  autoFixEnabled: boolean;
+}
+
+export type ParamName = 'timeStep' | 'gridSpacing' | 'diffusionCoefficient' | 'boundaryTemp' | 'gridSize';

@@ -46,10 +46,10 @@ export const DiagnosisHistoryModal: React.FC<DiagnosisHistoryModalProps> = ({
   onClose,
   onSelectDiagnosis,
 }) => {
-  const { stability, clearDiagnosisHistory, setLatestDiagnosis } = useSimulationStore();
+  const { stability, clearDiagnosisHistory, setViewingHistoryDiagnosis } = useSimulationStore();
 
   const handleSelect = (diagnosis: StabilityDiagnosis) => {
-    setLatestDiagnosis(diagnosis);
+    setViewingHistoryDiagnosis(diagnosis);
     onSelectDiagnosis(diagnosis);
     onClose();
   };

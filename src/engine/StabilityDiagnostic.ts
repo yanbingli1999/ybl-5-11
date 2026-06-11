@@ -24,6 +24,10 @@ export interface FixSuggestion {
   param: ParamName;
   recommendedValue: number;
   description: string;
+  boundaryAdjustment?: {
+    targetMin: number;
+    targetMax: number;
+  };
 }
 
 export class StabilityDiagnosticEngine {
@@ -125,24 +129,40 @@ export class StabilityDiagnosticEngine {
     }
 
     if (boundaryStats.diff > 150) {
+      const targetMax = 100;
+      const targetMin = 0;
       issues.push({
         type: 'boundary',
         severity: 'high',
         reason: `边界温差过大（${boundaryStats.min.toFixed(0)}°C ~ ${boundaryStats.max.toFixed(0)}°C，温差 ${boundaryStats.diff.toFixed(0)}°C），可能导致温度梯度区域数值振荡`,
-        suggestion: `建议缩小边界温度范围，或使用 Neumann 边界条件`,
+        suggestion: `建议将边界温度调整至 ${targetMin}°C ~ ${targetMax}°C 范围内，温差控制在 ${targetMax - targetMin}°C 以内`,
         affectedParam: 'boundaryTemp',
         currentValue: boundaryStats.diff,
-        recommendedValue: 100,
+        recommendedValue: targetMax - targetMin,
+        boundaryAdjustment: {
+          targetMin,
+          targetMax,
+          originalMin: boundaryStats.min,
+          originalMax: boundaryStats.max,
+        },
       });
     } else if (boundaryStats.diff > 80) {
+      const targetMax = 80;
+      const targetMin = 0;
       issues.push({
         type: 'boundary',
         severity: 'low',
         reason: `边界温差较大（${boundaryStats.diff.toFixed(0)}°C），高梯度区域精度可能下降`,
-        suggestion: `可考虑适当减小时间步长以提高梯度区域稳定性`,
+        suggestion: `建议将边界温度调整至 ${targetMin}°C ~ ${targetMax}°C 范围内以提高梯度区域稳定性`,
         affectedParam: 'boundaryTemp',
         currentValue: boundaryStats.diff,
-        recommendedValue: 80,
+        recommendedValue: targetMax - targetMin,
+        boundaryAdjustment: {
+          targetMin,
+          targetMax,
+          originalMin: boundaryStats.min,
+          originalMax: boundaryStats.max,
+        },
       });
     }
 
@@ -230,6 +250,16 @@ export class StabilityDiagnosticEngine {
           param: 'gridSize',
           recommendedValue: issue.recommendedValue,
           description: `优化网格尺寸: ${issue.currentValue} → ${issue.recommendedValue}`,
+        });
+      }
+
+      if (issue.type === 'boundary' && issue.boundaryAdjustment) {
+        const { targetMin, targetMax, originalMin, originalMax } = issue.boundaryAdjustment;
+        suggestions.push({
+          param: 'boundaryTemp',
+          recommendedValue: issue.recommendedValue,
+          description: `调整边界温度: ${originalMin.toFixed(0)}°~${originalMax.toFixed(0)}° → ${targetMin}°~${targetMax}°`,
+          boundaryAdjustment: { targetMin, targetMax },
         });
       }
     }

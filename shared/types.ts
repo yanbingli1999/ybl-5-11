@@ -59,6 +59,13 @@ export type SimulationMode = 'idle' | 'running' | 'paused' | 'finished';
 
 export type StabilityRiskLevel = 'safe' | 'warning' | 'danger';
 
+export interface BoundaryAdjustment {
+  targetMin: number;
+  targetMax: number;
+  originalMin: number;
+  originalMax: number;
+}
+
 export interface StabilityIssue {
   type: 'stability' | 'accuracy' | 'boundary' | 'performance';
   severity: 'low' | 'medium' | 'high';
@@ -67,6 +74,7 @@ export interface StabilityIssue {
   affectedParam: string;
   currentValue: number;
   recommendedValue: number;
+  boundaryAdjustment?: BoundaryAdjustment;
 }
 
 export interface StabilityDiagnosis {
@@ -91,6 +99,7 @@ export interface StabilityDiagnosis {
 
 export interface StabilityState {
   latestDiagnosis: StabilityDiagnosis | null;
+  viewingHistoryDiagnosis: StabilityDiagnosis | null;
   diagnosisHistory: StabilityDiagnosis[];
   autoFixEnabled: boolean;
 }

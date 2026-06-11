@@ -76,6 +76,7 @@ interface SimulationState {
   setHoveredCell: (cell: { x: number; y: number } | null) => void;
   
   setLatestDiagnosis: (diagnosis: StabilityDiagnosis) => void;
+  setViewingHistoryDiagnosis: (diagnosis: StabilityDiagnosis | null) => void;
   addDiagnosisToHistory: (diagnosis: StabilityDiagnosis) => void;
   clearDiagnosisHistory: () => void;
   setAutoFixEnabled: (enabled: boolean) => void;
@@ -98,6 +99,28 @@ const DEFAULT_BC: BoundaryConditions = {
   type: 'dirichlet',
 };
 
+const STORAGE_KEY = 'heat_diffusion_diagnosis_history';
+
+function loadDiagnosisHistory(): StabilityDiagnosis[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('加载诊断历史失败:', e);
+  }
+  return [];
+}
+
+function saveDiagnosisHistory(history: StabilityDiagnosis[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  } catch (e) {
+    console.error('保存诊断历史失败:', e);
+  }
+}
+
 function createEmptyTemperature(grid: GridConfig): number[][] {
   const data: number[][] = [];
   for (let y = 0; y < grid.height; y++) {
@@ -105,6 +128,8 @@ function createEmptyTemperature(grid: GridConfig): number[][] {
   }
   return data;
 }
+
+const savedHistory = loadDiagnosisHistory();
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   mode: 'idle',
@@ -136,7 +161,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   stability: {
     latestDiagnosis: null,
-    diagnosisHistory: [],
+    viewingHistoryDiagnosis: null,
+    diagnosisHistory: savedHistory,
     autoFixEnabled: false,
   },
   
@@ -207,22 +233,36 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         latestDiagnosis: diagnosis,
       },
     })),
-  
-  addDiagnosisToHistory: (diagnosis) =>
+
+  setViewingHistoryDiagnosis: (diagnosis) =>
     set((state) => ({
       stability: {
         ...state.stability,
-        diagnosisHistory: [...state.stability.diagnosisHistory.slice(-49), diagnosis],
+        viewingHistoryDiagnosis: diagnosis,
       },
     })),
   
-  clearDiagnosisHistory: () =>
+  addDiagnosisToHistory: (diagnosis) =>
+    set((state) => {
+      const newHistory = [...state.stability.diagnosisHistory.slice(-49), diagnosis];
+      saveDiagnosisHistory(newHistory);
+      return {
+        stability: {
+          ...state.stability,
+          diagnosisHistory: newHistory,
+        },
+      };
+    }),
+  
+  clearDiagnosisHistory: () => {
+    saveDiagnosisHistory([]);
     set((state) => ({
       stability: {
         ...state.stability,
         diagnosisHistory: [],
       },
-    })),
+    }));
+  },
   
   setAutoFixEnabled: (enabled) =>
     set((state) => ({
@@ -252,6 +292,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         case 'diffusionCoefficient':
           updates.diffusionCoefficient = suggestion.recommendedValue;
           break;
+        case 'boundaryTemp':
+          if (suggestion.boundaryAdjustment) {
+            const { targetMin, targetMax } = suggestion.boundaryAdjustment;
+            const currentBC = state.boundaryConditions;
+            const avgTemp = (currentBC.top + currentBC.bottom + currentBC.left + currentBC.right) / 4;
+            const scaleFactor = (targetMax - targetMin) / (currentBC.right - currentBC.left || 1);
+            
+            const clamp = (val: number) => Math.max(targetMin, Math.min(targetMax, val));
+            
+            updates.boundaryConditions = {
+              ...currentBC,
+              top: clamp(currentBC.top > currentBC.bottom ? targetMax : targetMin),
+              bottom: clamp(currentBC.bottom > currentBC.top ? targetMax : targetMin),
+              left: clamp(currentBC.left > currentBC.right ? targetMax : targetMin),
+              right: clamp(currentBC.right > currentBC.left ? targetMax : targetMin),
+            };
+          }
+          break;
       }
     }
     
@@ -261,11 +319,18 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       updates.currentStep = 0;
     }
     
+    if (updates.boundaryConditions) {
+      updates.currentTemperature = createEmptyTemperature(state.grid);
+      updates.temperatureHistory = [];
+      updates.currentStep = 0;
+    }
+    
     set((state) => ({
       ...state,
       ...updates,
       stability: {
         ...state.stability,
+        viewingHistoryDiagnosis: null,
         latestDiagnosis: state.stability.latestDiagnosis
           ? { ...state.stability.latestDiagnosis, isAutoFixed: true }
           : null,

@@ -9,7 +9,7 @@ import DiagnosisHistoryModal from '@/components/DiagnosisHistoryModal';
 import useSimulationStore from '@/store/useSimulationStore';
 import useStabilityDiagnostic from '@/hooks/useStabilityDiagnostic';
 import api from '@/services/api';
-import { Flame, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
+import { Flame, ShieldAlert, ShieldCheck, ShieldX, ArrowLeft, Eye } from 'lucide-react';
 import type { StabilityDiagnosis } from '@shared/types';
 
 export default function Home() {
@@ -20,6 +20,7 @@ export default function Home() {
     setSnapshots,
     currentExperimentId,
     stability,
+    setViewingHistoryDiagnosis,
   } = useSimulationStore();
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -61,8 +62,9 @@ export default function Home() {
     }
   }, [currentExperimentId, setSnapshots]);
 
-  const latestDiagnosis = stability.latestDiagnosis;
-  const riskLevel = latestDiagnosis?.riskLevel || 'safe';
+  const isViewingHistory = stability.viewingHistoryDiagnosis !== null;
+  const activeDiagnosis = isViewingHistory ? stability.viewingHistoryDiagnosis : stability.latestDiagnosis;
+  const riskLevel = activeDiagnosis?.riskLevel || 'safe';
 
   const riskIndicatorConfig = {
     safe: {
@@ -111,24 +113,40 @@ export default function Home() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleShowHistory}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all hover:brightness-110 ${riskConfig.bg} ${riskConfig.color}`}
-          >
-            <div className="relative">
-              {riskConfig.icon}
-              {riskLevel !== 'safe' && (
-                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${riskConfig.pulse} rounded-full animate-ping`} />
+          {isViewingHistory ? (
+            <button
+              onClick={() => setViewingHistoryDiagnosis(null)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all hover:brightness-110 bg-blue-900/30 border-blue-500/30 text-blue-400"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>返回当前诊断</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleShowHistory}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all hover:brightness-110 ${riskConfig.bg} ${riskConfig.color}`}
+            >
+              <div className="relative">
+                {riskConfig.icon}
+                {riskLevel !== 'safe' && (
+                  <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${riskConfig.pulse} rounded-full animate-ping`} />
+                )}
+              </div>
+              <span>稳定性: {riskConfig.label}</span>
+              {activeDiagnosis && activeDiagnosis.issues.length > 0 && (
+                <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                  {activeDiagnosis.issues.length}
+                </span>
               )}
+            </button>
+          )}
+          {isViewingHistory && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-amber-900/20 border border-amber-500/20 rounded-lg">
+              <Eye className="w-3 h-3 text-amber-400" />
+              <span className="text-xs text-amber-400">查看历史记录</span>
             </div>
-            <span>稳定性: {riskConfig.label}</span>
-            {latestDiagnosis && latestDiagnosis.issues.length > 0 && (
-              <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">
-                {latestDiagnosis.issues.length}
-              </span>
-            )}
-          </button>
-          <span className="text-xs text-slate-400 px-2 py-1 bg-slate-800 rounded-md">v1.1.0</span>
+          )}
+          <span className="text-xs text-slate-400 px-2 py-1 bg-slate-800 rounded-md">v1.2.0</span>
         </div>
       </header>
 

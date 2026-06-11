@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Sparkles,
   Info,
+  ArrowLeft,
+  Eye,
 } from 'lucide-react';
 import useSimulationStore from '../store/useSimulationStore';
 import { StabilityDiagnosticEngine } from '../engine/StabilityDiagnostic';
@@ -109,11 +111,17 @@ export const StabilityDiagnosticPanel: React.FC<StabilityDiagnosticPanelProps> =
     stability,
     setAutoFixEnabled,
     applyFixSuggestions,
+    setViewingHistoryDiagnosis,
   } = useSimulationStore();
 
   const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
 
-  const diagnosis = stability.latestDiagnosis;
+  const isViewingHistory = stability.viewingHistoryDiagnosis !== null;
+  const diagnosis = isViewingHistory ? stability.viewingHistoryDiagnosis : stability.latestDiagnosis;
+
+  const handleExitHistoryView = () => {
+    setViewingHistoryDiagnosis(null);
+  };
 
   const toggleIssue = (issueIndex: number) => {
     setExpandedIssues((prev) => {
@@ -171,22 +179,38 @@ export const StabilityDiagnosticPanel: React.FC<StabilityDiagnosticPanelProps> =
   return (
     <div className="w-72 bg-slate-900/95 backdrop-blur-sm border-l border-slate-700 h-full overflow-y-auto p-4 space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-blue-400" />
-            稳定性诊断
-          </h2>
-          <button
-            onClick={onShowHistory}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
-          >
-            <History className="w-3 h-3" />
-            历史
-            <span className="bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">
-              {stability.diagnosisHistory.length}
-            </span>
-          </button>
-        </div>
+        {isViewingHistory ? (
+          <div className="space-y-2">
+            <button
+              onClick={handleExitHistoryView}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-blue-900/30 border border-blue-500/30 rounded-lg text-blue-400 hover:bg-blue-900/50 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">返回当前诊断</span>
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-900/20 border border-amber-500/20 rounded-lg">
+              <Eye className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-amber-400">正在查看历史诊断记录</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-blue-400" />
+              稳定性诊断
+            </h2>
+            <button
+              onClick={onShowHistory}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
+            >
+              <History className="w-3 h-3" />
+              历史
+              <span className="bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">
+                {stability.diagnosisHistory.length}
+              </span>
+            </button>
+          </div>
+        )}
         <div className="h-px bg-slate-700" />
       </div>
 
@@ -360,7 +384,7 @@ export const StabilityDiagnosticPanel: React.FC<StabilityDiagnosticPanelProps> =
         </div>
       )}
 
-      {autoFixCount > 0 && (
+      {autoFixCount > 0 && !isViewingHistory && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 px-3 py-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
             <input
@@ -394,6 +418,13 @@ export const StabilityDiagnosticPanel: React.FC<StabilityDiagnosticPanelProps> =
               ))}
             </ul>
           </div>
+        </div>
+      )}
+
+      {isViewingHistory && (
+        <div className="px-3 py-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+          <p className="text-sm text-slate-400">历史记录仅用于查看</p>
+          <p className="text-xs text-slate-500 mt-1">请返回当前诊断后再进行修正操作</p>
         </div>
       )}
 

@@ -29,7 +29,10 @@ export function useStabilityDiagnostic() {
       gridSpacing,
       gridWidth: grid.width,
       gridHeight: grid.height,
-      bc: boundaryConditions,
+      bcTop: boundaryConditions.top,
+      bcBottom: boundaryConditions.bottom,
+      bcLeft: boundaryConditions.left,
+      bcRight: boundaryConditions.right,
     });
 
     if (paramsKey === lastParamsRef.current) {
@@ -60,7 +63,10 @@ export function useStabilityDiagnostic() {
     return diagnosis;
   }, [
     grid,
-    boundaryConditions,
+    boundaryConditions.top,
+    boundaryConditions.bottom,
+    boundaryConditions.left,
+    boundaryConditions.right,
     diffusionCoefficient,
     timeStep,
     stability.autoFixEnabled,

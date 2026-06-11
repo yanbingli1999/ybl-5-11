@@ -109,8 +109,8 @@ export const ConfigPanel: React.FC = () => {
                 </div>
                 <input
                   type="range"
-                  min="0"
-                  max="100"
+                  min="-50"
+                  max="200"
                   value={boundaryConditions[side]}
                   onChange={(e) => handleBoundaryChange(side, Number(e.target.value))}
                   className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
